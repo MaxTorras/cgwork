@@ -25,15 +25,7 @@ export default function FormsPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [finalInformation, setFinalInformation] = useState("");
-  const [questions, setQuestions] = useState<Question[]>([
-  {
-    id: crypto.randomUUID(),
-    label: "",
-    type: "short_text",
-    required: true,
-    options: [],
-  },
-]);
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -57,8 +49,18 @@ export default function FormsPage() {
   }
 
   useEffect(() => {
-    loadForms();
-  }, []);
+  loadForms();
+
+  setQuestions([
+    {
+      id: crypto.randomUUID(),
+      label: "",
+      type: "short_text",
+      required: true,
+      options: [],
+    },
+  ]);
+}, []);
 
   async function createForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

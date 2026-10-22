@@ -1,10 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase-server";
 
-export const dynamic = "force-dynamic";
+export default function AdminPage() {
+  return (
+    <Suspense fallback={<p className="p-6">Loading admin...</p>}>
+      <AdminContent />
+    </Suspense>
+  );
+}
 
-export default async function AdminPage() {
+async function AdminContent() {
   const supabase = await createClient();
 
   const {

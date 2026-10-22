@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase-server";
+import { connection } from "next/server";
 
 export default function AdminPage() {
   return (
@@ -12,6 +13,8 @@ export default function AdminPage() {
 }
 
 async function AdminContent() {
+  await connection();
+
   const supabase = await createClient();
 
   const {

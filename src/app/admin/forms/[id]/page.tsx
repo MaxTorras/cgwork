@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-browser";
+import { Suspense } from "react";
+
 
 type Question = {
   id: string;
@@ -28,6 +30,14 @@ type FormData = {
 };
 
 export default function EditFormPage() {
+  return (
+    <Suspense fallback={<p className="p-6">Loading form...</p>}>
+      <EditFormContent />
+    </Suspense>
+  );
+}
+
+function EditFormContent() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
 

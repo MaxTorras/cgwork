@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
+import { Suspense } from "react";
 
 type Question = {
   id: string;
@@ -35,6 +36,14 @@ function FormattedText({ text }: { text: string }) {
   );
 }
 export default function PublicFormPage() {
+  return (
+    <Suspense fallback={<p className="p-6">Loading form...</p>}>
+      <PublicFormContent />
+    </Suspense>
+  );
+}
+
+function PublicFormContent() {
   const params = useParams<{ id: string }>();
   const formId = params.id;
 

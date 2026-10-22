@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
+import { Suspense } from "react";
 
 type Question = {
 id: string;
@@ -25,8 +26,16 @@ created_at: string;
 };
 
 export default function FormResponsesPage() {
-const params = useParams();
-const formId = params.formId as string;
+  return (
+    <Suspense fallback={<p className="p-6">Loading submissions...</p>}>
+      <FormResponsesContent />
+    </Suspense>
+  );
+}
+
+function FormResponsesContent() {
+  const params = useParams();
+  const formId = params.formId as string;
 
 const [form, setForm] = useState<FormData | null>(null);
 const [submissions, setSubmissions] = useState<Submission[]>([]);

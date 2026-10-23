@@ -11,6 +11,8 @@ type Question = {
   type: string;
   required: boolean;
   options?: string[];
+  kind?: "question" | "section";
+  sectionDescription?: string;
 };
 
 type FormData = {
@@ -149,126 +151,152 @@ function PublicFormContent() {
 )}
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-            {form.fields.map((question) => (
-              <div key={question.id}>
-                <label
-                  htmlFor={question.id}
-                  className="mb-2 block text-sm font-medium text-gray-800"
-                >
-                  {question.label}
-                  {question.required && (
-                    <span className="ml-1 text-red-600">*</span>
-                  )}
-                </label>
+            {form.fields.map((question) =>
+  question.kind === "section" ? (
+    <div
+      key={question.id}
+      className="border-b border-gray-200 pb-3 pt-2"
+    >
+      <h2 className="text-xl font-semibold text-gray-900">
+        {question.label}
+      </h2>
 
-                {question.type === "short_text" || question.type === "text" ? (
-  <input
-    id={question.id}
-    type="text"
-    required={question.required}
-    value={answers[question.id] ?? ""}
-    onChange={(e) =>
-      setAnswers((previous) => ({
-        ...previous,
-        [question.id]: e.target.value,
-      }))
-    }
-    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-indigo-500"
-  />
-) : question.type === "long_text" ? (
-  <textarea
-    id={question.id}
-    required={question.required}
-    value={answers[question.id] ?? ""}
-    onChange={(e) =>
-      setAnswers((previous) => ({
-        ...previous,
-        [question.id]: e.target.value,
-      }))
-    }
-    rows={4}
-    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-indigo-500"
-  />
-) : question.type === "multiple_choice" ? (
-  <div className="space-y-2">
-    {question.options?.map((option) => (
-      <label key={option} className="flex items-center gap-3 text-gray-700">
+      {question.sectionDescription && (
+        <div className="mt-2">
+          <FormattedText text={question.sectionDescription} />
+        </div>
+      )}
+    </div>
+  ) : (
+    <div key={question.id}>
+      <label
+        htmlFor={question.id}
+        className="mb-2 block text-sm font-medium text-gray-800"
+      >
+        {question.label}
+        {question.required && (
+          <span className="ml-1 text-red-600">*</span>
+        )}
+      </label>
+
+      {question.type === "short_text" || question.type === "text" ? (
         <input
-          type="radio"
-          name={question.id}
-          value={option}
+          id={question.id}
+          type="text"
           required={question.required}
-          checked={answers[question.id] === option}
-          onChange={() =>
+          value={answers[question.id] ?? ""}
+          onChange={(e) =>
             setAnswers((previous) => ({
               ...previous,
-              [question.id]: option,
+              [question.id]: e.target.value,
             }))
           }
-          className="h-4 w-4"
+          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-indigo-500"
         />
-        {option}
-      </label>
-    ))}
-  </div>
-) : question.type === "checkboxes" ? (
-  <div className="space-y-2">
-    {question.options?.map((option) => {
-      const selected = (answers[question.id] ?? "")
-        .split("|||")
-        .filter(Boolean);
+      ) : question.type === "long_text" ? (
+        <textarea
+          id={question.id}
+          required={question.required}
+          value={answers[question.id] ?? ""}
+          onChange={(e) =>
+            setAnswers((previous) => ({
+              ...previous,
+              [question.id]: e.target.value,
+            }))
+          }
+          rows={4}
+          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-indigo-500"
+        />
+      ) : question.type === "multiple_choice" ? (
+        <div className="space-y-2">
+          {question.options?.map((option) => (
+            <label
+              key={option}
+              className="flex items-center gap-3 text-gray-700"
+            >
+              <input
+                type="radio"
+                name={question.id}
+                value={option}
+                required={question.required}
+                checked={answers[question.id] === option}
+                onChange={() =>
+                  setAnswers((previous) => ({
+                    ...previous,
+                    [question.id]: option,
+                  }))
+                }
+                className="h-4 w-4"
+              />
+              {option}
+            </label>
+          ))}
+        </div>
+      ) : question.type === "checkboxes" ? (
+        <div className="space-y-2">
+          {question.options?.map((option) => {
+            const selected = (answers[question.id] ?? "")
+              .split("|||")
+              .filter(Boolean);
 
-      return (
-        <label key={option} className="flex items-center gap-3 text-gray-700">
-          <input
-            type="checkbox"
-            checked={selected.includes(option)}
-            onChange={(e) => {
-              const updated = e.target.checked
-                ? [...selected, option]
-                : selected.filter((item) => item !== option);
+            return (
+              <label
+                key={option}
+                className="flex items-center gap-3 text-gray-700"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(option)}
+                  onChange={(e) => {
+                    const updated = e.target.checked
+                      ? [...selected, option]
+                      : selected.filter((item) => item !== option);
 
-              setAnswers((previous) => ({
-                ...previous,
-                [question.id]: updated.join("|||"),
-              }));
-            }}
-            className="h-4 w-4 rounded"
-          />
-          {option}
-        </label>
-      );
-    })}
-    {question.required &&
-      !(answers[question.id] ?? "").split("|||").filter(Boolean).length && (
+                    setAnswers((previous) => ({
+                      ...previous,
+                      [question.id]: updated.join("|||"),
+                    }));
+                  }}
+                  className="h-4 w-4 rounded"
+                />
+                {option}
+              </label>
+            );
+          })}
+
+          {question.required &&
+            !(answers[question.id] ?? "")
+              .split("|||")
+              .filter(Boolean).length && (
+              <input
+                tabIndex={-1}
+                autoComplete="off"
+                aria-label={`${question.label} validation`}
+                required
+                value=""
+                onChange={() => {}}
+                className="pointer-events-none absolute h-px w-px opacity-0"
+              />
+            )}
+        </div>
+      ) : question.type === "date" ? (
         <input
-          tabIndex={-1}
-          autoComplete="off"
-          aria-label={`${question.label} validation`}
-          required
-          value=""
-          onChange={() => {}}
-          className="pointer-events-none absolute h-px w-px opacity-0"
+          id={question.id}
+          type="date"
+          required={question.required}
+          value={answers[question.id] ?? ""}
+          onChange={(e) =>
+            setAnswers((previous) => ({
+              ...previous,
+              [question.id]: e.target.value,
+            }))
+          }
+          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-indigo-500"
         />
-      )}
-  </div>
-) : question.type === "date" ? (
-  <input
-    id={question.id}
-    type="date"
-    required={question.required}
-    value={answers[question.id] ?? ""}
-    onChange={(e) =>
-      setAnswers((previous) => ({
-        ...previous,
-        [question.id]: e.target.value,
-      }))
-    }
-    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-indigo-500"
-  />
-) : null}
-              </div>
-            ))}
+      ) : null}
+    </div>
+  )
+)}
 
             {error && (
               <p role="alert" className="text-sm text-red-600">

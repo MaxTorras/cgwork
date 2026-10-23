@@ -13,12 +13,30 @@ type Form = {
 
 
 type Question = {
-  id: string;
-  label: string;
-  type: "short_text" | "long_text" | "multiple_choice" | "checkboxes" | "date";
-  required: boolean;
-  options: string[];
+id: string;
+label: string;
+type: "short_text" | "long_text" | "multiple_choice" | "checkboxes" | "date";
+required: boolean;
+options: string[];
+kind?: "question" | "section";
+sectionDescription?: string;
 };
+
+function moveQuestion(
+  questions: Question[],
+  fromIndex: number,
+  toIndex: number
+): Question[] {
+  if (toIndex < 0 || toIndex >= questions.length) {
+    return questions;
+  }
+
+  const updatedQuestions = [...questions];
+  const [movedQuestion] = updatedQuestions.splice(fromIndex, 1);
+  updatedQuestions.splice(toIndex, 0, movedQuestion);
+
+  return updatedQuestions;
+}
 
 export default function FormsPage() {
   const [forms, setForms] = useState<Form[]>([]);
@@ -242,138 +260,219 @@ export default function FormsPage() {
   <h3 className="mb-3 text-sm font-medium text-gray-700">
     Questions
   </h3>
-
+</div>
   <div className="space-y-4">
-    {questions.map((question, index) => (
-      <div
-        key={question.id}
-        className="rounded-xl border border-gray-200 p-4"
+  {questions.map((question, index) => (
+    <div
+      key={question.id}
+      className={
+        question.kind === "section"
+          ? "rounded-xl border-2 border-green-200 bg-green-50 p-4"
+          : "rounded-xl border border-gray-200 bg-white p-4"
+      }
+    >
+      <div className="mb-4 flex items-center justify-between">
+        <h4 className="font-medium text-gray-900">
+          {question.kind === "section"
+            ? "Section"
+            : `Question ${index + 1}`}
+        </h4>
+
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        onClick={() =>
+          setQuestions((previous) =>
+            moveQuestion(previous, index, index - 1)
+          )
+        }
+        disabled={index === 0}
+        className="text-sm text-gray-600 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
       >
-        <div className="mb-4 flex items-center justify-between">
-          <h4 className="font-medium text-gray-900">
-            Question {index + 1}
-          </h4>
+        ↑ Up
+      </button>
 
-          <button
-            type="button"
-            onClick={() =>
-              setQuestions((previous) =>
-                previous.filter((item) => item.id !== question.id)
-              )
-            }
-            className="text-sm text-red-600 hover:underline"
-          >
-            Remove
-          </button>
-        </div>
+      <button
+        type="button"
+        onClick={() =>
+          setQuestions((previous) =>
+            moveQuestion(previous, index, index + 1)
+          )
+        }
+        disabled={index === questions.length - 1}
+        className="text-sm text-gray-600 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        ↓ Down
+      </button>
 
-        <div className="space-y-4">
-          <div>
-            <label className="mb-2 block text-sm text-gray-700">
-              Question text
-            </label>
-
-            <input
-              type="text"
-              value={question.label}
-              onChange={(e) =>
-                setQuestions((previous) =>
-                  previous.map((item) =>
-                    item.id === question.id
-                      ? { ...item, label: e.target.value }
-                      : item
-                  )
-                )
-              }
-              placeholder="e.g. What is your full name?"
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm text-gray-700">
-              Answer type
-            </label>
-
-            <select
-              value={question.type}
-              onChange={(e) =>
-                setQuestions((previous) =>
-                  previous.map((item) =>
-                    item.id === question.id
-                      ? {
-                          ...item,
-                          type: e.target.value as Question["type"],
-                          options: [],
-                        }
-                      : item
-                  )
-                )
-              }
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900"
-            >
-              <option value="short_text">Short answer</option>
-              <option value="long_text">Long answer</option>
-              <option value="multiple_choice">Multiple choice</option>
-              <option value="checkboxes">Checkboxes</option>
-              <option value="date">Date</option>
-            </select>
-          </div>
-
-          {(question.type === "multiple_choice" ||
-            question.type === "checkboxes") && (
-            <div>
-              <label className="mb-2 block text-sm text-gray-700">
-                Answer options
-              </label>
-
-              <textarea
-                value={question.options.join("\n")}
-                onChange={(e) =>
-                  setQuestions((previous) =>
-                    previous.map((item) =>
-                      item.id === question.id
-                        ? {
-                            ...item,
-                            options: e.target.value.split("\n"),
-                          }
-                        : item
-                    )
-                  )
-                }
-                placeholder={"Option 1\nOption 2\nOption 3"}
-                rows={3}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900"
-              />
-
-              <p className="mt-1 text-xs text-gray-500">
-                Enter one option per line.
-              </p>
-            </div>
-          )}
-
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              checked={question.required}
-              onChange={(e) =>
-                setQuestions((previous) =>
-                  previous.map((item) =>
-                    item.id === question.id
-                      ? { ...item, required: e.target.checked }
-                      : item
-                  )
-                )
-              }
-              className="h-4 w-4 rounded border-gray-300"
-            />
-            Required question
-          </label>
-        </div>
-      </div>
-    ))}
+      <button
+        type="button"
+        onClick={() =>
+          setQuestions((previous) =>
+            previous.filter((item) => item.id !== question.id)
+          )
+        }
+        className="text-sm text-red-600 hover:underline"
+      >
+        Remove
+      </button>
+    </div>
   </div>
 
+  {question.kind === "section" ? (
+    <div>
+      <label className="mb-2 block text-sm font-medium text-gray-700">
+        Section title
+      </label>
+
+      <input
+        type="text"
+        value={question.label}
+        onChange={(e) =>
+          setQuestions((previous) =>
+            previous.map((item) =>
+              item.id === question.id
+                ? { ...item, label: e.target.value }
+                : item
+            )
+          )
+        }
+        placeholder="e.g. Personal information"
+        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900"
+      />
+
+      <label className="mb-2 mt-4 block text-sm font-medium text-gray-700">
+        Section description (optional)
+      </label>
+
+      <textarea
+        value={question.sectionDescription ?? ""}
+        onChange={(e) =>
+          setQuestions((previous) =>
+            previous.map((item) =>
+              item.id === question.id
+                ? { ...item, sectionDescription: e.target.value }
+                : item
+            )
+          )
+        }
+        placeholder="Explain what this section is about..."
+        rows={2}
+        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900"
+      />
+    </div>
+  ) : (
+    <div className="space-y-4">
+      <div>
+        <label className="mb-2 block text-sm text-gray-700">
+          Question text
+        </label>
+
+        <input
+          type="text"
+          value={question.label}
+          onChange={(e) =>
+            setQuestions((previous) =>
+              previous.map((item) =>
+                item.id === question.id
+                  ? { ...item, label: e.target.value }
+                  : item
+              )
+            )
+          }
+          placeholder="e.g. What is your full name?"
+          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900"
+        />
+      </div>
+
+      <div>
+        <label className="mb-2 block text-sm text-gray-700">
+          Answer type
+        </label>
+
+        <select
+          value={question.type}
+          onChange={(e) =>
+            setQuestions((previous) =>
+              previous.map((item) =>
+                item.id === question.id
+                  ? {
+                      ...item,
+                      type: e.target.value as Question["type"],
+                      options: [],
+                    }
+                  : item
+              )
+            )
+          }
+          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900"
+        >
+          <option value="short_text">Short answer</option>
+          <option value="long_text">Long answer</option>
+          <option value="multiple_choice">Multiple choice</option>
+          <option value="checkboxes">Checkboxes</option>
+          <option value="date">Date</option>
+        </select>
+      </div>
+
+      {(question.type === "multiple_choice" ||
+        question.type === "checkboxes") && (
+        <div>
+          <label className="mb-2 block text-sm text-gray-700">
+            Answer options
+          </label>
+
+          <textarea
+            value={question.options.join("\n")}
+            onChange={(e) =>
+              setQuestions((previous) =>
+                previous.map((item) =>
+                  item.id === question.id
+                    ? {
+                        ...item,
+                        options: e.target.value.split("\n"),
+                      }
+                    : item
+                )
+              )
+            }
+            placeholder={"Option 1\nOption 2\nOption 3"}
+            rows={3}
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900"
+          />
+
+          <p className="mt-1 text-xs text-gray-500">
+            Enter one option per line.
+          </p>
+        </div>
+      )}
+
+      <label className="flex items-center gap-2 text-sm text-gray-700">
+        <input
+          type="checkbox"
+          checked={question.required}
+          onChange={(e) =>
+            setQuestions((previous) =>
+              previous.map((item) =>
+                item.id === question.id
+                  ? { ...item, required: e.target.checked }
+                  : item
+              )
+            )
+          }
+          className="h-4 w-4 rounded border-gray-300"
+        />
+        Required question
+      </label>
+    </div>
+  )}
+</div>
+
+))}
+
+</div>
+
+  <div className="mt-4 flex flex-wrap gap-3">
   <button
     type="button"
     onClick={() =>
@@ -385,13 +484,35 @@ export default function FormsPage() {
           type: "short_text",
           required: true,
           options: [],
+          kind: "question",
         },
       ])
     }
-    className="mt-4 rounded-lg border border-indigo-600 px-4 py-2 font-medium text-indigo-600 hover:bg-indigo-50"
+    className="rounded-lg border border-indigo-600 px-4 py-2 font-medium text-indigo-600 hover:bg-indigo-50"
   >
     + Add question
   </button>
+
+<button
+  type="button"
+  onClick={() =>
+    setQuestions((previous) => [
+      ...previous,
+      {
+        id: crypto.randomUUID(),
+        label: "",
+        type: "short_text",
+        required: false,
+        options: [],
+        kind: "section",
+        sectionDescription: "",
+      },
+    ])
+  }
+  className="rounded-lg border border-green-600 px-4 py-2 font-medium text-green-700 hover:bg-green-50"
+>
+  + Add section
+</button>
 </div>
 
             {error && (

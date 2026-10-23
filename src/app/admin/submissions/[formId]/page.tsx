@@ -7,10 +7,12 @@ import { createClient } from "@/lib/supabase-browser";
 import { Suspense } from "react";
 
 type Question = {
-id: string;
-label: string;
-type?: string;
-options?: string[];
+  id: string;
+  label: string;
+  type?: string;
+  options?: string[];
+  kind?: "question" | "section";
+  sectionDescription?: string;
 };
 
 type FormData = {
@@ -86,18 +88,22 @@ loadData();
     const escapeCSV = (value: unknown) =>
       `"${String(value ?? "").replace(/"/g, '""')}"`;
 
-    const headers = [
-      "Submitted",
-      ...form.fields.map((field) => field.label),
-    ];
+    const questionFields = form.fields.filter(
+  (field) => field.kind !== "section"
+);
+
+const headers = [
+  "Submitted",
+  ...questionFields.map((field) => field.label),
+];
 
     const rows = submissions.map((submission) => [
-      new Date(submission.created_at).toLocaleString("en-GB"),
-      ...form.fields.map((field) => {
-        const answer = submission.answers?.[field.id];
-        return answer || "";
-      }),
-    ]);
+  new Date(submission.created_at).toLocaleString("en-GB"),
+  ...questionFields.map((field) => {
+    const answer = submission.answers?.[field.id];
+    return answer || "";
+  }),
+]);
 
     const csvContent = [headers, ...rows]
       .map((row) => row.map(escapeCSV).join(","))
@@ -172,14 +178,16 @@ return (
                 Submitted
               </th>
 
-              {form.fields.map((field) => (
-                <th
-                  key={field.id}
-                  className="min-w-40 border-b border-gray-200 px-4 py-3 font-semibold text-gray-700"
-                >
-                  {field.label}
-                </th>
-              ))}
+              {form.fields
+  .filter((field) => field.kind !== "section")
+  .map((field) => (
+    <th
+      key={field.id}
+      className="min-w-40 border-b border-gray-200 px-4 py-3 font-semibold text-gray-700"
+    >
+      {field.label}
+    </th>
+  ))}
             </tr>
           </thead>
 
@@ -199,16 +207,18 @@ return (
                   )}
                 </td>
 
-                {form.fields.map((field) => (
-                  <td
-                    key={field.id}
-                    className="max-w-xs border-b border-gray-100 px-4 py-3 text-gray-900"
-                  >
-                    <div className="whitespace-pre-wrap wrap-break-words">
-                      {submission.answers?.[field.id] || "—"}
-                    </div>
-                  </td>
-                ))}
+                {form.fields
+  .filter((field) => field.kind !== "section")
+  .map((field) => (
+    <td
+      key={field.id}
+      className="max-w-xs border-b border-gray-100 px-4 py-3 text-gray-900"
+    >
+      <div className="whitespace-pre-wrap wrap-break-words">
+        {submission.answers?.[field.id] || "—"}
+      </div>
+    </td>
+  ))}
               </tr>
             ))}
           </tbody>

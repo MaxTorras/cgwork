@@ -89,10 +89,30 @@ function PublicFormContent() {
 
     const supabase = createClient();
 
-    const { error } = await supabase.from("submissions").insert({
-      form_id: formId,
-      answers,
-    });
+    const finalAnswers = { ...answers };
+
+form?.fields.forEach((question) => {
+  const otherKey = question.id + "_other";
+  const otherAnswer = finalAnswers[otherKey]?.trim();
+
+  if (finalAnswers[question.id] === "__other__") {
+    finalAnswers[question.id] = otherAnswer ?? "";
+  } else if (question.type === "checkboxes" && otherAnswer) {
+    finalAnswers[question.id] = [
+      finalAnswers[question.id],
+      "Other: " + otherAnswer,
+    ]
+      .filter(Boolean)
+      .join("|||");
+  }
+
+  delete finalAnswers[otherKey];
+});
+
+const { error } = await supabase.from("submissions").insert({
+form_id: formId,
+answers: finalAnswers,
+});
 
     if (error) {
       setError("We couldn't submit your answers. Please try again.");
@@ -274,53 +294,95 @@ function PublicFormContent() {
 
   </div>
       ) : question.type === "checkboxes" ? (
+    <div className="space-y-2">
+      {question.options?.map((option) => {
+        const selected = (answers[question.id] ?? "")
+          .split("|||")
+          .filter(Boolean);
+
+        return (
+          <label
+            key={option}
+            className="flex items-center gap-3 text-gray-700"
+          >
+            <input
+              type="checkbox"
+              checked={selected.includes(option)}
+              onChange={(e) => {
+                const updated = e.target.checked
+                  ? [...selected, option]
+                  : selected.filter((item) => item !== option);
+
+                setAnswers((previous) => ({
+                  ...previous,
+                  [question.id]: updated.join("|||"),
+                }));
+              }}
+              className="h-4 w-4 rounded"
+            />
+            {option}
+          </label>
+        );
+      })}
+
+      {question.allowOther && (
         <div className="space-y-2">
-          {question.options?.map((option) => {
-            const selected = (answers[question.id] ?? "")
-              .split("|||")
-              .filter(Boolean);
+          <label className="flex items-center gap-3 text-gray-700">
+            <input
+              type="checkbox"
+              checked={Boolean(answers[question.id + "_other"])}
+              onChange={(e) =>
+                setAnswers((previous) => ({
+                  ...previous,
+                  [question.id + "_other"]: e.target.checked
+                    ? " "
+                    : "",
+                }))
+              }
+              className="h-4 w-4 rounded"
+            />
+            Other
+          </label>
 
-            return (
-              <label
-                key={option}
-                className="flex items-center gap-3 text-gray-700"
-              >
-                <input
-                  type="checkbox"
-                  checked={selected.includes(option)}
-                  onChange={(e) => {
-                    const updated = e.target.checked
-                      ? [...selected, option]
-                      : selected.filter((item) => item !== option);
-
-                    setAnswers((previous) => ({
-                      ...previous,
-                      [question.id]: updated.join("|||"),
-                    }));
-                  }}
-                  className="h-4 w-4 rounded"
-                />
-                {option}
-              </label>
-            );
-          })}
-
-          {question.required &&
-            !(answers[question.id] ?? "")
-              .split("|||")
-              .filter(Boolean).length && (
-              <input
-                tabIndex={-1}
-                autoComplete="off"
-                aria-label={`${question.label} validation`}
-                required
-                value=""
-                onChange={() => {}}
-                className="pointer-events-none absolute h-px w-px opacity-0"
-              />
-            )}
+          {Boolean(answers[question.id + "_other"]) && (
+            <input
+              type="text"
+              required={false}
+              placeholder="Please specify..."
+              value={
+                answers[question.id + "_other"] === " "
+                  ? ""
+                  : answers[question.id + "_other"]
+              }
+              onChange={(e) =>
+                setAnswers((previous) => ({
+                  ...previous,
+                  [question.id + "_other"]: e.target.value,
+                }))
+              }
+              className="ml-7 w-[calc(100%-1.75rem)] rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-indigo-500"
+            />
+          )}
         </div>
-      ) : question.type === "date" ? (
+      )}
+
+      {question.required &&
+        !(answers[question.id] ?? "")
+          .split("|||")
+          .filter(Boolean).length &&
+        !(answers[question.id + "_other"] ?? "").trim() && (
+          <input
+            tabIndex={-1}
+            autoComplete="off"
+            aria-label={`${question.label} validation`}
+            required
+            value=""
+            onChange={() => {}}
+            className="pointer-events-none absolute h-px w-px opacity-0"
+          />
+        )}
+    </div>
+  ) : question.type === "date" ? (
         <input
           id={question.id}
           type="date"

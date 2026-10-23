@@ -21,6 +21,7 @@ required: boolean;
 options: string[];
 kind?: "question" | "section";
 sectionDescription?: string;
+allowOther?: boolean;
 };
 
 type FormData = {
@@ -407,7 +408,22 @@ function EditFormContent() {
             />
           </div>
         )}
-
+{(question.type === "multiple_choice" ||
+      question.type === "checkboxes") && (
+      <label className="mt-4 flex items-center gap-2 text-sm text-gray-700">
+        <input
+          type="checkbox"
+          checked={question.allowOther ?? false}
+          onChange={(e) =>
+            updateQuestion(question.id, {
+              allowOther: e.target.checked,
+            })
+          }
+          className="h-4 w-4"
+        />
+        Allow respondents to select "Other" and write their own answer
+      </label>
+    )}
         <label className="mt-4 flex items-center gap-2 text-sm text-gray-700">
           <input
             type="checkbox"

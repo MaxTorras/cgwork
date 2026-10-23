@@ -20,6 +20,7 @@ required: boolean;
 options: string[];
 kind?: "question" | "section";
 sectionDescription?: string;
+allowOther?: boolean;
 };
 
 function moveQuestion(
@@ -446,7 +447,26 @@ export default function FormsPage() {
           </p>
         </div>
       )}
-
+{(question.type === "multiple_choice" ||
+    question.type === "checkboxes") && (
+    <label className="flex items-center gap-2 text-sm text-gray-700">
+      <input
+        type="checkbox"
+        checked={question.allowOther ?? false}
+        onChange={(e) =>
+          setQuestions((previous) =>
+            previous.map((item) =>
+              item.id === question.id
+                ? { ...item, allowOther: e.target.checked }
+                : item
+            )
+          )
+        }
+        className="h-4 w-4 rounded border-gray-300"
+      />
+      Allow respondents to select "Other" and write their own answer
+    </label>
+  )}
       <label className="flex items-center gap-2 text-sm text-gray-700">
         <input
           type="checkbox"

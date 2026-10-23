@@ -13,6 +13,7 @@ type Question = {
   options?: string[];
   kind?: "question" | "section";
   sectionDescription?: string;
+  allowOther?: boolean;
 };
 
 type FormData = {
@@ -208,30 +209,70 @@ function PublicFormContent() {
           className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-indigo-500"
         />
       ) : question.type === "multiple_choice" ? (
-        <div className="space-y-2">
-          {question.options?.map((option) => (
-            <label
-              key={option}
-              className="flex items-center gap-3 text-gray-700"
-            >
-              <input
-                type="radio"
-                name={question.id}
-                value={option}
-                required={question.required}
-                checked={answers[question.id] === option}
-                onChange={() =>
-                  setAnswers((previous) => ({
-                    ...previous,
-                    [question.id]: option,
-                  }))
-                }
-                className="h-4 w-4"
-              />
-              {option}
-            </label>
-          ))}
-        </div>
+
+  <div className="space-y-2">
+    {question.options?.map((option) => (
+      <label
+        key={option}
+        className="flex items-center gap-3 text-gray-700"
+      >
+        <input
+          type="radio"
+          name={question.id}
+          value={option}
+          required={question.required && !answers[`${question.id}_other`]}
+          checked={answers[question.id] === option}
+          onChange={() =>
+            setAnswers((previous) => ({
+              ...previous,
+              [question.id]: option,
+              [`${question.id}_other`]: "",
+            }))
+          }
+          className="h-4 w-4"
+        />
+        {option}
+      </label>
+    ))}
+
+{question.allowOther && (
+  <div className="space-y-2">
+    <label className="flex items-center gap-3 text-gray-700">
+      <input
+        type="radio"
+        name={question.id}
+        required={question.required && !answers[question.id]}
+        checked={answers[question.id] === "__other__"}
+        onChange={() =>
+          setAnswers((previous) => ({
+            ...previous,
+            [question.id]: "__other__",
+          }))
+        }
+        className="h-4 w-4"
+      />
+      Other
+    </label>
+
+    {answers[question.id] === "__other__" && (
+      <input
+        type="text"
+        required={question.required}
+        placeholder="Please specify..."
+        value={answers[`${question.id}_other`] ?? ""}
+        onChange={(e) =>
+          setAnswers((previous) => ({
+            ...previous,
+            [`${question.id}_other`]: e.target.value,
+          }))
+        }
+        className="ml-7 w-[calc(100%-1.75rem)] rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-indigo-500"
+      />
+    )}
+  </div>
+)}
+
+  </div>
       ) : question.type === "checkboxes" ? (
         <div className="space-y-2">
           {question.options?.map((option) => {

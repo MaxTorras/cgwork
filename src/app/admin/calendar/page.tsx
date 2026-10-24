@@ -15,14 +15,28 @@ import { createClient } from "@/lib/supabase-browser";
   category: string;
 };
 
+type CalendarGroup = {
+  id: string;
+  name: string;
+  color: string;
+};
+
 export default function CalendarPage() {
 
 const supabase = createClient();
-const [currentDate, setCurrentDate] = useState(new Date());
+const [currentDate, setCurrentDate] = useState<Date | null>(null);
 const [events, setEvents] = useState<CalendarEvent[]>([]);
 const [selectedDate, setSelectedDate] = useState<string | null>(null);
 const [editingEvent, setEditingEvent] = useState<CalendarEvent |    null>(null);
 const [showEventForm, setShowEventForm] = useState(false);
+
+const [groups, setGroups] = useState<CalendarGroup[]>([]);
+const [showGroupForm, setShowGroupForm] = useState(false);
+const [editingGroup, setEditingGroup] = useState<CalendarGroup | null>(null);
+
+useEffect(() => {
+  setCurrentDate(new Date());
+}, []);
 
 useEffect(() => {
   async function loadEvents() {
@@ -53,6 +67,40 @@ useEffect(() => {
   loadEvents();
 }, []);
 
+useEffect(() => {
+  async function loadGroups() {
+    const { data, error } = await supabase
+      .from("calendar_groups")
+      .select("*")
+      .order("name", { ascending: true });
+
+    if (error) {
+      console.error("Error loading calendar groups:", error);
+      return;
+    }
+
+    setGroups(
+      (data ?? []).map((group) => ({
+        id: group.id,
+        name: group.name,
+        color: group.color,
+      }))
+    );
+  }
+
+  loadGroups();
+}, []);
+
+if (!currentDate) {
+  return (
+    <main className="min-h-screen bg-gray-50 px-6 py-10 sm:px-10">
+      <div className="mx-auto max-w-5xl">
+        <p className="text-gray-500">Loading calendar...</p>
+      </div>
+    </main>
+  );
+}
+
 const year = currentDate.getFullYear();
 const month = currentDate.getMonth();
 
@@ -63,16 +111,16 @@ const daysInMonth = new Date(year, month + 1, 0).getDate();
 const startingDay = (firstDay + 6) % 7;
 
 const days = Array.from(
-{ length: startingDay + daysInMonth },
-(_, index) => {
-if (index < startingDay) return null;
-return index - startingDay + 1;
-}
+  { length: startingDay + daysInMonth },
+  (_, index) => {
+    if (index < startingDay) return null;
+    return index - startingDay + 1;
+  }
 );
 
 const monthName = currentDate.toLocaleDateString("en-GB", {
-month: "long",
-year: "numeric",
+  month: "long",
+  year: "numeric",
 });
 
 function changeMonth(amount: number) {
@@ -233,6 +281,56 @@ return (
   </button>
 </div>
     </div>
+<section className="mt-8 rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
+  <div className="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h2 className="text-lg font-semibold text-gray-900">
+        Event groups
+      </h2>
+      <p className="mt-1 text-sm text-gray-500">
+        Organise your events by category and colour.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      onClick={() => {
+        setEditingGroup(null);
+        setShowGroupForm(true);
+      }}
+      className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+    >
+      + New group
+    </button>
+  </div>
+
+  <div className="mt-5 flex flex-wrap gap-3">
+    {groups.length === 0 ? (
+      <p className="text-sm text-gray-500">
+        No groups yet. Create your first group to get started.
+      </p>
+    ) : (
+      groups.map((group) => (
+        <button
+          key={group.id}
+          type="button"
+          onClick={() => {
+            setEditingGroup(group);
+            setShowGroupForm(true);
+          }}
+          className="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          <span
+            className="h-3 w-3 rounded-full"
+            style={{ backgroundColor: group.color }}
+          />
+          {group.name}
+          <span className="ml-1 text-gray-400">Edit</span>
+        </button>
+      ))
+    )}
+  </div>
+</section>
 
     <section className="mt-8 rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
       <div className="mb-6 flex items-center justify-between gap-4">

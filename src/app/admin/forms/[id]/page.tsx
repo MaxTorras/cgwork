@@ -25,12 +25,14 @@ allowOther?: boolean;
 };
 
 type FormData = {
-  id: string;
-  title: string;
-  description: string | null;
-  fields: Question[];
-  is_published: boolean;
+id: string;
+title: string;
+description: string | null;
+final_information?: string | null;
+fields: Question[];
+is_published: boolean;
 };
+
 function moveQuestion<T>(items: T[], fromIndex: number, toIndex: number): T[] {
   if (
     toIndex < 0 ||
@@ -62,6 +64,7 @@ function EditFormContent() {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [finalInformation, setFinalInformation] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -74,7 +77,7 @@ function EditFormContent() {
 
       const { data, error } = await supabase
         .from("forms")
-        .select("id, title, description, fields, is_published")
+        .select("id, title, description, final_information, fields, is_published")
         .eq("id", params.id)
         .maybeSingle();
 
@@ -88,6 +91,7 @@ function EditFormContent() {
 
       setTitle(form.title);
       setDescription(form.description ?? "");
+      setFinalInformation(form.final_information ?? "");
       setQuestions(
         (form.fields ?? []).map((question) => ({
           ...question,
@@ -157,10 +161,11 @@ function EditFormContent() {
     const { error } = await supabase
       .from("forms")
       .update({
-        title: title.trim(),
-        description: description.trim(),
-        fields,
-      })
+  title: title.trim(),
+  description: description.trim(),
+  final_information: finalInformation.trim(),
+  fields,
+})
       .eq("id", params.id);
 
     if (error) {
@@ -249,6 +254,28 @@ function EditFormContent() {
               />
             </div>
           </section>
+          <section className="rounded-xl border border-gray-200 bg-white p-6">
+  <label
+    htmlFor="finalInformation"
+    className="mb-2 block text-sm font-medium text-gray-700"
+  >
+    Final information
+  </label>
+
+  <p className="mb-3 text-sm text-gray-500">
+    Add any additional information you want respondents to see at the end
+    of the form.
+  </p>
+
+  <textarea
+    id="finalInformation"
+    value={finalInformation}
+    onChange={(e) => setFinalInformation(e.target.value)}
+    rows={5}
+    placeholder="Enter final information..."
+    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900"
+  />
+</section>
 
           <section className="rounded-xl border border-gray-200 bg-white p-6">
             <h2 className="text-xl font-semibold text-gray-900">

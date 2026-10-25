@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
+import Link from "next/link";
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -41,8 +42,16 @@ export default function AdminLogin() {
 }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
-      <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-6 py-8">
+  <div className="w-full max-w-md">
+    <Link
+      href="/"
+      className="mb-5 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+    >
+      ← Back to main page
+    </Link>
+
+    <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
         <h1 className="text-2xl font-bold text-gray-900">
           cgwork Admin
         </h1>
@@ -104,6 +113,7 @@ export default function AdminLogin() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
+      </div>
       </div>
     </main>
   );

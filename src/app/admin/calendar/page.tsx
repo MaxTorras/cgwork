@@ -4,15 +4,17 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-browser";
 
-    type CalendarEvent = {
+  type CalendarEvent = {
   id: string;
   title: string;
   date: string;
+  endDate: string;
   startTime: string;
   endTime: string;
   allDay: boolean;
   description: string;
-  category: string;
+  groupId: string | null;
+  color: string | null;
 };
 
 type CalendarGroup = {
@@ -55,11 +57,13 @@ useEffect(() => {
         id: event.id,
         title: event.title,
         date: event.event_date,
+        endDate: event.end_date ?? event.event_date,
         startTime: event.start_time?.slice(0, 5) ?? "",
         endTime: event.end_time?.slice(0, 5) ?? "",
         allDay: event.all_day,
         description: event.description,
-        category: event.category,
+        groupId: event.group_id ?? null,
+  color: event.color ?? null,
       }))
     );
   }
@@ -105,18 +109,29 @@ const year = currentDate.getFullYear();
 const month = currentDate.getMonth();
 
 const firstDay = new Date(year, month, 1).getDay();
-const daysInMonth = new Date(year, month + 1, 0).getDate();
 
 // Start the calendar on Monday
 const startingDay = (firstDay + 6) % 7;
 
-const days = Array.from(
-  { length: startingDay + daysInMonth },
-  (_, index) => {
-    if (index < startingDay) return null;
-    return index - startingDay + 1;
-  }
-);
+// Include dates from the previous and following months
+const totalDays = Math.ceil(
+  (startingDay + new Date(year, month + 1, 0).getDate()) / 7
+) * 7;
+
+const calendarDates = Array.from({ length: totalDays }, (_, index) => {
+  const date = new Date(year, month, index - startingDay + 1);
+
+  return {
+    date,
+    day: date.getDate(),
+    dateString: [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0"),
+    ].join("-"),
+    isCurrentMonth: date.getMonth() === month,
+  };
+});
 
 const monthName = currentDate.toLocaleDateString("en-GB", {
   month: "long",
@@ -143,15 +158,17 @@ async function handleSaveEvent(eventData: Omit<CalendarEvent, "id">) {
   }
 
   const databaseEvent = {
-    title: eventData.title,
-    event_date: eventData.date,
-    start_time: eventData.allDay ? null : eventData.startTime || null,
-    end_time: eventData.allDay ? null : eventData.endTime || null,
-    all_day: eventData.allDay,
-    description: eventData.description,
-    category: eventData.category,
-    created_by: user.id,
-  };
+  title: eventData.title,
+  event_date: eventData.date,
+  end_date: eventData.endDate,
+  start_time: eventData.allDay ? null : eventData.startTime || null,
+  end_time: eventData.allDay ? null : eventData.endTime || null,
+  all_day: eventData.allDay,
+  description: eventData.description,
+  group_id: eventData.groupId,
+  color: eventData.color,
+  created_by: user.id,
+};
 
   if (editingEvent) {
     const { error } = await supabase
@@ -189,18 +206,20 @@ async function handleSaveEvent(eventData: Omit<CalendarEvent, "id">) {
     }
 
     setEvents((previousEvents) => [
-      ...previousEvents,
-      {
-        id: data.id,
-        title: data.title,
-        date: data.event_date,
-        startTime: data.start_time?.slice(0, 5) ?? "",
-        endTime: data.end_time?.slice(0, 5) ?? "",
-        allDay: data.all_day,
-        description: data.description,
-        category: data.category,
-      },
-    ]);
+  ...previousEvents,
+  {
+    id: data.id,
+    title: data.title,
+    date: data.event_date,
+    endDate: data.end_date ?? data.event_date,
+    startTime: data.start_time?.slice(0, 5) ?? "",
+    endTime: data.end_time?.slice(0, 5) ?? "",
+    allDay: data.all_day,
+    description: data.description,
+    groupId: data.group_id ?? null,
+    color: data.color ?? null,
+  },
+]);
   }
 
   setShowEventForm(false);
@@ -231,6 +250,99 @@ previousEvents.filter((event) => event.id !== eventId)
 setShowEventForm(false);
 setEditingEvent(null);
 }
+
+async function handleSaveGroup(name: string, color: string) {
+const cleanName = name.trim();
+
+if (!cleanName) {
+alert("Please enter a group name.");
+return;
+}
+
+if (editingGroup) {
+const { data, error } = await supabase
+.from("calendar_groups")
+.update({
+name: cleanName,
+color,
+updated_at: new Date().toISOString(),
+})
+.eq("id", editingGroup.id)
+.select()
+.single();
+
+if (error) {
+  console.error("Error updating group:", error);
+  alert("Could not update the group. Check that its name is not already in use.");
+  return;
+}
+
+setGroups((previousGroups) =>
+  previousGroups
+    .map((group) =>
+      group.id === editingGroup.id
+        ? { id: data.id, name: data.name, color: data.color }
+        : group
+    )
+    .sort((a, b) => a.name.localeCompare(b.name))
+);
+
+} else {
+const { data, error } = await supabase
+.from("calendar_groups")
+.insert({
+name: cleanName,
+color,
+})
+.select()
+.single();
+
+if (error) {
+  console.error("Error creating group:", error);
+  alert("Could not create the group. Check that its name is not already in use.");
+  return;
+}
+
+setGroups((previousGroups) =>
+  [...previousGroups, {
+    id: data.id,
+    name: data.name,
+    color: data.color,
+  }].sort((a, b) => a.name.localeCompare(b.name))
+);
+
+}
+
+setShowGroupForm(false);
+setEditingGroup(null);
+}
+
+async function handleDeleteGroup(groupId: string) {
+const confirmed = window.confirm(
+"Delete this group? Existing events will be kept, but they will no longer belong to this group."
+);
+
+if (!confirmed) return;
+
+const { error } = await supabase
+.from("calendar_groups")
+.delete()
+.eq("id", groupId);
+
+if (error) {
+console.error("Error deleting group:", error);
+alert("Could not delete the group. Please try again.");
+return;
+}
+
+setGroups((previousGroups) =>
+previousGroups.filter((group) => group.id !== groupId)
+);
+
+setShowGroupForm(false);
+setEditingGroup(null);
+}
+
 
 const today = new Date();
 
@@ -357,88 +469,199 @@ return (
         </button>
       </div>
 
-      <div className="grid grid-cols-7 border-b border-gray-200 pb-3">
-        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
-          (day) => (
-            <div
-              key={day}
-              className="text-center text-xs font-semibold text-gray-500 sm:text-sm"
-            >
-              {day}
-            </div>
-          )
-        )}
+<div className="grid grid-cols-7">
+  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+    (dayName) => (
+      <div
+        key={dayName}
+        className="border-b border-r border-gray-100 p-2 text-center text-xs font-semibold text-gray-500"
+      >
+        {dayName}
       </div>
+    )
+  )}
 
-      <div className="grid grid-cols-7">
-        {days.map((day, index) => {
-          const isToday =
-            day !== null &&
-            day === today.getDate() &&
-            month === today.getMonth() &&
-            year === today.getFullYear();
+  {Array.from(
+    { length: calendarDates.length / 7 },
+    (_, weekIndex) => {
+      const weekDates = calendarDates.slice(
+        weekIndex * 7,
+        weekIndex * 7 + 7
+      );
 
-          return (
-            <div
-              key={index}
-              className="min-h-20 border-b border-r border-gray-100 p-1 sm:min-h-28 sm:p-3"
-            >
-              {day !== null && (
-  <>
-    <button
-      type="button"
-      onClick={() => {
-        const dateString = `${year}-${String(month + 1).padStart(
-          2,
-          "0"
-        )}-${String(day).padStart(2, "0")}`;
+      const weekStart = weekDates[0].dateString;
+      const weekEnd = weekDates[6].dateString;
 
-        setSelectedDate(dateString);
-        setEditingEvent(null);
-        setShowEventForm(true);
-      }}
-      className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm ${
-        isToday
-          ? "bg-indigo-600 font-semibold text-white"
-          : "text-gray-700 hover:bg-gray-100"
-      }`}
-      aria-label={`Create event on ${day} ${monthName}`}
-    >
-      {day}
-    </button>
-
-    <div className="mt-1 space-y-1">
-      {events
+      const weekEvents = events
         .filter(
           (event) =>
-            event.date ===
-            `${year}-${String(month + 1).padStart(2, "0")}-${String(
-              day
-            ).padStart(2, "0")}`
+            event.date <= weekEnd && event.endDate >= weekStart
         )
-        .map((event) => (
-  <button
-    key={event.id}
-    type="button"
-    onClick={() => {
-      setEditingEvent(event);
-      setSelectedDate(event.date);
-      setShowEventForm(true);
-    }}
-    className="block w-full truncate rounded bg-indigo-100 px-1 py-1 text-left text-xs text-indigo-800 hover:bg-indigo-200"
-    title={`${event.title} — Click to edit`}
-  >
-    {event.allDay ? "" : `${event.startTime} `}
-    {event.title}
-  </button>
-))}
-    </div>
-  </>
-)}
-            </div>
-          );
-        })}
-      </div>
+        .sort(
+          (a, b) =>
+            a.date.localeCompare(b.date) ||
+            b.endDate.localeCompare(a.endDate) ||
+            a.title.localeCompare(b.title)
+        );
+
+      const eventRows: CalendarEvent[][] = [];
+
+      const placedEvents = weekEvents.map((event) => {
+        const visibleStart =
+          event.date < weekStart ? weekStart : event.date;
+
+        const visibleEnd =
+          event.endDate > weekEnd ? weekEnd : event.endDate;
+
+        const startColumn = weekDates.findIndex(
+          (item) => item.dateString === visibleStart
+        );
+
+        const endColumn = weekDates.findIndex(
+          (item) => item.dateString === visibleEnd
+        );
+
+        let row = 0;
+
+        while (
+          eventRows[row]?.some((existingEvent) => {
+            const existingStart =
+              existingEvent.date < weekStart
+                ? weekStart
+                : existingEvent.date;
+
+            const existingEnd =
+              existingEvent.endDate > weekEnd
+                ? weekEnd
+                : existingEvent.endDate;
+
+            return (
+              existingStart <= visibleEnd &&
+              existingEnd >= visibleStart
+            );
+          })
+        ) {
+          row++;
+        }
+
+        if (!eventRows[row]) {
+          eventRows[row] = [];
+        }
+
+        eventRows[row].push(event);
+
+        return {
+          event,
+          row,
+          startColumn,
+          span: endColumn - startColumn + 1,
+          continuesBefore: event.date < weekStart,
+          continuesAfter: event.endDate > weekEnd,
+        };
+      });
+
+      const rowCount = Math.max(eventRows.length, 1);
+
+      return (
+        <div key={weekStart} className="col-span-7">
+          <div className="grid grid-cols-7">
+            {weekDates.map((item) => {
+              const isToday =
+                item.dateString ===
+                `${today.getFullYear()}-${String(
+                  today.getMonth() + 1
+                ).padStart(2, "0")}-${String(
+                  today.getDate()
+                ).padStart(2, "0")}`;
+
+              return (
+                <div
+                  key={item.dateString}
+                  className={`min-h-10 border-b border-r border-gray-100 p-1 sm:p-2 ${
+                    item.isCurrentMonth
+                      ? "bg-white"
+                      : "bg-gray-50 text-gray-400"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedDate(item.dateString);
+                      setEditingEvent(null);
+                      setShowEventForm(true);
+                    }}
+                    className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm ${
+                      isToday
+                        ? "bg-indigo-600 font-semibold text-white"
+                        : item.isCurrentMonth
+                          ? "text-gray-700 hover:bg-gray-100"
+                          : "text-gray-400 hover:bg-gray-200"
+                    }`}
+                    aria-label={`Create event on ${item.dateString}`}
+                  >
+                    {item.day}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          <div
+            className="grid grid-cols-7 gap-y-1 border-b border-gray-100 pb-2"
+            style={{
+              gridTemplateRows: `repeat(${rowCount}, 24px)`,
+            }}
+          >
+            {placedEvents.map(
+              ({
+                event,
+                row,
+                startColumn,
+                span,
+                continuesBefore,
+                continuesAfter,
+              }) => {
+                const groupColor = groups.find(
+                  (group) => group.id === event.groupId
+                )?.color;
+
+                return (
+                  <button
+                    key={event.id}
+                    type="button"
+                    onClick={() => {
+                      setEditingEvent(event);
+                      setSelectedDate(event.date);
+                      setShowEventForm(true);
+                    }}
+                    className="z-10 h-6 min-w-0 truncate px-1 text-left text-xs text-white hover:opacity-80"
+                    style={{
+                      gridColumn: `${startColumn + 1} / span ${span}`,
+                      gridRow: row + 1,
+                      backgroundColor:
+                        event.color ?? groupColor ?? "#6366f1",
+                      borderTopLeftRadius: continuesBefore ? 0 : 4,
+                      borderBottomLeftRadius: continuesBefore ? 0 : 4,
+                      borderTopRightRadius: continuesAfter ? 0 : 4,
+                      borderBottomRightRadius: continuesAfter ? 0 : 4,
+                    }}
+                    title={`${event.title} (${event.date} to ${event.endDate}) — Click to edit`}
+                  >
+                    {!continuesBefore &&
+                      !event.allDay &&
+                      event.startTime &&
+                      `${event.startTime} `}
+                    {event.title}
+                  </button>
+                );
+              }
+            )}
+          </div>
+        </div>
+      );
+    }
+  )}
+</div>
     </section>
 
     <p className="mt-4 text-sm text-gray-500">
@@ -450,6 +673,7 @@ return (
     <EventForm
       selectedDate={selectedDate}
       editingEvent={editingEvent}
+      groups={groups}
       onSave={handleSaveEvent}
       onDelete={handleDeleteEvent}
       onCancel={() => {
@@ -458,6 +682,18 @@ return (
       }}
     />
   )}
+  {showGroupForm && (
+  <GroupForm
+    editingGroup={editingGroup}
+    onSave={handleSaveGroup}
+    onDelete={handleDeleteGroup}
+    onCancel={() => {
+      setShowGroupForm(false);
+      setEditingGroup(null);
+    }}
+  />
+)}
+
 </main>
 );
 }
@@ -465,6 +701,7 @@ return (
 type EventFormProps = {
   selectedDate: string | null;
   editingEvent: CalendarEvent | null;
+  groups: CalendarGroup[];
   onSave: (event: Omit<CalendarEvent, "id">) => void;
   onDelete: (eventId: string) => void;
   onCancel: () => void;
@@ -473,6 +710,7 @@ type EventFormProps = {
 function EventForm({
   selectedDate,
   editingEvent,
+  groups,
   onSave,
   onDelete,
   onCancel,
@@ -483,9 +721,22 @@ function EventForm({
       selectedDate ??
       new Date().toLocaleDateString("en-CA")
   );
+  const [endDate, setEndDate] = useState(
+  editingEvent?.endDate ??
+    editingEvent?.date ??
+    selectedDate ??
+    new Date().toLocaleDateString("en-CA")
+);
   const [startTime, setStartTime] = useState(
     editingEvent?.startTime ?? "09:00"
   );
+  const [groupId, setGroupId] = useState(
+  editingEvent?.groupId ?? ""
+);
+const [color, setColor] = useState(
+  editingEvent?.color ?? ""
+);
+
   const [endTime, setEndTime] = useState(
     editingEvent?.endTime ?? "10:00"
   );
@@ -493,23 +744,28 @@ function EventForm({
   const [description, setDescription] = useState(
     editingEvent?.description ?? ""
   );
-  const [category, setCategory] = useState(
-    editingEvent?.category ?? "Meeting"
-  );
+
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!title.trim() || !date) return;
+    if (!title.trim() || !date || !endDate) return;
+
+if (endDate < date) {
+  alert("The end date cannot be before the start date.");
+  return;
+}
 
     onSave({
       title: title.trim(),
       date,
+      endDate,
       startTime: allDay ? "" : startTime,
       endTime: allDay ? "" : endTime,
       allDay,
       description: description.trim(),
-      category,
+      groupId: groupId || null,
+color: color || null,
     });
   }
 
@@ -549,7 +805,19 @@ function EventForm({
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900"
             />
           </div>
-
+<div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    End date *
+  </label>
+  <input
+    required
+    type="date"
+    min={date}
+    value={endDate}
+    onChange={(event) => setEndDate(event.target.value)}
+    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900"
+  />
+</div>
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
               type="checkbox"
@@ -588,22 +856,60 @@ function EventForm({
             </div>
           )}
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Category
-            </label>
-            <select
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900"
-            >
-              <option>Meeting</option>
-              <option>Deadline</option>
-              <option>Training</option>
-              <option>Personal</option>
-              <option>Other</option>
-            </select>
-          </div>
+<div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    Group
+  </label>
+  <select
+    value={groupId}
+    onChange={(event) => {
+      setGroupId(event.target.value);
+      setColor("");
+    }}
+    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900"
+  >
+    <option value="">No group</option>
+    {groups.map((group) => (
+      <option key={group.id} value={group.id}>
+        {group.name}
+      </option>
+    ))}
+  </select>
+</div>
+
+<div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    Event colour
+  </label>
+
+  <div className="flex items-center gap-3">
+    <input
+      type="color"
+      value={
+        color ||
+        groups.find((group) => group.id === groupId)?.color ||
+        "#6366f1"
+      }
+      onChange={(event) => setColor(event.target.value)}
+      className="h-10 w-14 cursor-pointer rounded border border-gray-300 p-1"
+      aria-label="Choose event colour"
+    />
+
+    <span className="text-sm text-gray-500">
+      {color ? "Custom colour" : "Using group colour"}
+    </span>
+  </div>
+
+  {color && (
+    <button
+      type="button"
+      onClick={() => setColor("")}
+      className="mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-800"
+    >
+      Use group colour
+    </button>
+  )}
+</div>
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
@@ -647,4 +953,104 @@ function EventForm({
       </form>
     </div>
   );
+}
+type GroupFormProps = {
+editingGroup: CalendarGroup | null;
+onSave: (name: string, color: string) => void;
+onDelete: (groupId: string) => void;
+onCancel: () => void;
+};
+
+function GroupForm({
+editingGroup,
+onSave,
+onDelete,
+onCancel,
+}: GroupFormProps) {
+const [name, setName] = useState(editingGroup?.name ?? "");
+const [color, setColor] = useState(editingGroup?.color ?? "#6366f1");
+
+function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+event.preventDefault();
+onSave(name, color);
+}
+
+return (
+<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+<form
+     onSubmit={handleSubmit}
+     className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
+   >
+<h2 className="mb-6 text-xl font-semibold text-gray-900">
+{editingGroup ? "Edit group" : "Create group"}
+</h2>
+
+    <div className="space-y-5">
+      <div>
+        <label className="mb-1 block text-sm font-medium text-gray-700">
+          Group name *
+        </label>
+        <input
+          required
+          maxLength={60}
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900"
+          placeholder="e.g. Futsal"
+        />
+      </div>
+
+      <div>
+        <label className="mb-2 block text-sm font-medium text-gray-700">
+          Group colour
+        </label>
+
+        <div className="flex items-center gap-3">
+          <input
+            type="color"
+            value={color}
+            onChange={(event) => setColor(event.target.value)}
+            className="h-11 w-14 cursor-pointer rounded border border-gray-300 p-1"
+          />
+
+          <span className="text-sm text-gray-600">{color}</span>
+
+          <span
+            className="h-6 w-6 rounded-full border border-black/10"
+            style={{ backgroundColor: color }}
+          />
+        </div>
+      </div>
+    </div>
+
+    <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
+      {editingGroup && (
+        <button
+          type="button"
+          onClick={() => onDelete(editingGroup.id)}
+          className="mr-auto rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+        >
+          Delete
+        </button>
+      )}
+
+      <button
+        type="button"
+        onClick={onCancel}
+        className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+      >
+        Cancel
+      </button>
+
+      <button
+        type="submit"
+        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+      >
+        {editingGroup ? "Save changes" : "Create group"}
+      </button>
+    </div>
+  </form>
+</div>
+
+);
 }

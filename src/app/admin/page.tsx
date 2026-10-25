@@ -1,9 +1,11 @@
+// src\app\admin\page.tsx
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase-server";
 import { connection } from "next/server";
 import type { Metadata } from "next";
+import LogoutButton from "@/app/admin/components/LogoutButton";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -37,9 +39,20 @@ async function AdminContent() {
           cgwork Admin
         </h1>
 
-        <p className="mt-2 text-gray-600">
-          Welcome to your workspace.
-        </p>
+       <div className="mt-2 flex flex-wrap items-center gap-4">
+  <p className="text-gray-600">
+    Welcome to your workspace.
+  </p>
+
+  <Link
+    href="/"
+    className="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+  >
+    ← Main website
+  </Link>
+
+  <LogoutButton />
+</div>
 
        <section className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <Link

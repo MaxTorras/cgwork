@@ -1,3 +1,4 @@
+// src\app\admin\login\page.tsx
 "use client";
 
 import { useState } from "react";
@@ -14,10 +15,11 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
 
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+  e.preventDefault();
+  setError("");
+  setLoading(true);
 
+  try {
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -25,13 +27,18 @@ export default function AdminLogin() {
 
     if (error) {
       setError("Login failed. Please check your email and password.");
-      setLoading(false);
       return;
     }
 
-    router.push("/admin");
+    router.replace("/admin");
     router.refresh();
+  } catch (err) {
+    console.error("Login error:", err);
+    setError("Something went wrong while signing in. Please try again.");
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-6">

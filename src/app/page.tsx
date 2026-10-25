@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const sections = [
   {
     title: "Workspace",
@@ -21,15 +23,25 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-12 sm:px-10">
       <div className="mx-auto max-w-5xl">
-        <header>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            CG
-          </h1>
+        <header className="flex flex-wrap items-center justify-between gap-4">
+  <div>
+    <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+      CG
+    </h1>
 
-          <p className="mt-2 text-gray-600">
-            Your shared workspace.
-          </p>
-        </header>
+<p className="mt-2 text-gray-600">
+  Your shared workspace.
+</p>
+
+  </div>
+
+  <Link
+    href="/admin/login"
+    className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-indigo-700"
+  >
+    Admin Login
+  </Link>
+</header>
 
         <section className="mt-12">
           <h2 className="text-2xl font-semibold text-gray-900">

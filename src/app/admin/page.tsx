@@ -100,6 +100,22 @@ async function AdminContent() {
     Open calendar →
   </span>
 </Link>
+<Link
+  href="/admin/shop"
+  className="rounded-xl border border-gray-200 bg-white p-6 transition hover:border-indigo-400 hover:shadow-sm"
+>
+  <h2 className="text-xl font-semibold text-gray-900">
+    Shop
+  </h2>
+
+  <p className="mt-2 text-gray-600">
+    Manage club merchandise, products and availability.
+  </p>
+
+  <span className="mt-4 inline-block font-medium text-indigo-600">
+    Manage shop →
+  </span>
+</Link>
         </section>
       </div>
     </main>

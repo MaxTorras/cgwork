@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { Suspense, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 
 type OrderItem = {
   id: string;
@@ -26,7 +26,21 @@ type ShopOrder = {
   items: OrderItem[];
 };
 
-export default function ShopOrderDetailsPage() {
+export default function ShopOrderDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto max-w-7xl p-6">
+          <p className="text-gray-600">Loading order...</p>
+        </main>
+      }
+    >
+      <ShopOrderDetailContent />
+    </Suspense>
+  );
+}
+
+function ShopOrderDetailContent() {
   const params = useParams<{ id: string }>();
   const orderId = params.id;
 

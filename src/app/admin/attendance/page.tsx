@@ -22,9 +22,7 @@ export default function AttendancePage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
   const [groupId, setGroupId] = useState("");
-  const [attendanceDate, setAttendanceDate] = useState(
-    new Date().toLocaleDateString("en-CA")
-  );
+  const [attendanceDate, setAttendanceDate] = useState("");
   const [attendance, setAttendance] = useState<
     Record<string, AttendanceStatus>
   >({});
@@ -32,6 +30,10 @@ export default function AttendancePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+  setAttendanceDate(new Date().toLocaleDateString("en-CA"));
+}, []);
 
   useEffect(() => {
     async function loadGroups() {

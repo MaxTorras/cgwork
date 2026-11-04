@@ -116,6 +116,22 @@ async function AdminContent() {
     Manage shop →
   </span>
 </Link>
+<Link
+  href="/admin/attendance"
+  className="rounded-xl border border-gray-200 bg-white p-6 transition hover:border-indigo-400 hover:shadow-sm"
+>
+  <h2 className="text-xl font-semibold text-gray-900">
+    Attendance Tracker
+  </h2>
+
+  <p className="mt-2 text-gray-600">
+    Record attendance, manage people and groups, and view attendance history.
+  </p>
+
+  <span className="mt-4 inline-block font-medium text-indigo-600">
+    Open attendance tracker →
+  </span>
+</Link>
         </section>
       </div>
     </main>
